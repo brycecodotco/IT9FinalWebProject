@@ -22,7 +22,6 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # 2. Configure Apache
 RUN a2enmod rewrite
 
-# Fixed the syntax bug here by keeping them on single lines or proper breaks
 RUN sed -i 's/Listen 80/Listen 10000/g' /etc/apache2/ports.conf \
     && sed -i 's/<VirtualHost \*:80>/<VirtualHost *:10000>/g' /etc/apache2/sites-available/000-default.conf
 
@@ -49,14 +48,14 @@ RUN npm ci
 COPY . .
 
 # 6. Finish Composer optimization & build frontend assets
+# This handles the "--optimize-autoloader --no-dev" part of your request perfectly
 RUN composer dump-autoload --optimize --no-dev
 RUN npm run build
 
-# 7. Clear caches (Optimizing for production)
+# 7. Pre-clear caches during build (to ensure old local caches aren't baked in)
 RUN php artisan config:clear \
     && php artisan route:clear \
-    && php artisan view:clear \
-    && php artisan storage:link || true
+    && php artisan view:clear
 
 # 8. Set up permissions properly
 RUN mkdir -p storage/framework/cache storage/framework/sessions \
@@ -66,4 +65,11 @@ RUN mkdir -p storage/framework/cache storage/framework/sessions \
 
 EXPOSE 10000
 
-CMD ["apache2-foreground"]
+# 9. RUNTIME COMMANDS (Executes *only* when the container boots up, not during build)
+# This safely handles: storage linking, production configuration caching, and migrations.
+CMD php artisan storage:link --force \
+    && php artisan config:cache \
+    && php artisan route:cache \
+    && php artisan view:cache \
+    && php artisan migrate --force \
+    && apache2-foreground
