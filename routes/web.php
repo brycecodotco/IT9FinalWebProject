@@ -30,27 +30,6 @@ Route::get('/', function () {
 });
 
 // =========================================================
-// EMAIL VERIFICATION ROUTES
-// =========================================================
-Route::middleware('auth')->group(function () {
-    Route::get('/verify-email', function (Request $request) {
-        return $request->user()->hasVerifiedEmail()
-            ? redirect()->intended('/')
-            : view('auth.verify-email');
-    })->name('verification.notice');
-
-    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
-        $request->fulfill();
-        return redirect('/?verified=1')->with('status', 'Email verified successfully!');
-    })->middleware(['signed'])->name('verification.verify');
-
-    Route::post('/email/verification-notification', function (Request $request) {
-        $request->user()->sendEmailVerificationNotification();
-        return back()->with('status', 'verification-link-sent');
-    })->middleware(['throttle:6,1'])->name('verification.send');
-});
-
-// =========================================================
 // STUDENT ROUTES
 // =========================================================
 Route::middleware(['auth', 'verified'])->group(function () {
