@@ -86,11 +86,12 @@ class BookController extends Controller
             'books.*.category_id' => 'required|exists:categories,id',
             'books.*.isbn' => 'required|string',
             'books.*.quantity' => 'required|integer|min:1',
+            'books.*.cover' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // Added Image Validation
         ]);
 
-        foreach ($request->books as $bookData) {
+        foreach ($request->books as $index => $bookData) {
             $book = Book::find($bookData['id']);
-
+            
             // Smart Math: Adjust available copies based on the change in total quantity
             $quantityDifference = $bookData['quantity'] - $book->quantity;
             $newAvailableCopies = $book->available_copies + $quantityDifference;
@@ -98,6 +99,12 @@ class BookController extends Controller
             // Prevent lowering quantity below what is currently checked out
             if ($newAvailableCopies < 0) {
                 return back()->with('error', 'Cannot reduce quantity for "' . $book->title . '" because copies are currently borrowed.');
+            }
+
+            // Handle New Image Upload (if provided)
+            if ($request->hasFile("books.{$index}.cover")) {
+                $coverPath = $request->file("books.{$index}.cover")->store('book_covers', 'public');
+                $book->cover_image = $coverPath;
             }
 
             $book->update([
@@ -108,6 +115,7 @@ class BookController extends Controller
                 'quantity' => $bookData['quantity'],
                 'available_copies' => $newAvailableCopies,
                 'status' => $newAvailableCopies > 0 ? 'Available' : 'Borrowed',
+                'cover_image' => $book->cover_image, // Ensures new image path is saved
             ]);
         }
 
