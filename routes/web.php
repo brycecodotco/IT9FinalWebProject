@@ -39,11 +39,6 @@ Route::middleware('auth')->group(function () {
             : view('auth.verify-email');
     })->name('verification.notice');
 
-    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
-        $request->fulfill();
-        return redirect('/?verified=1')->with('status', 'Email verified successfully!');
-    })->middleware(['signed'])->name('verification.verify');
-
     Route::post('/email/verification-notification', function (Request $request) {
         $request->user()->sendEmailVerificationNotification();
         return back()->with('status', 'verification-link-sent');
@@ -75,7 +70,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // EMPLOYEE / ADMIN ROUTES
 // =========================================================
 Route::middleware(['auth', 'verified', 'employee'])->prefix('admin')->name('admin.')->group(function () {
-    
+
     // User Management
     Route::resource('users', UserController::class)->except(['create', 'store', 'show']);
 
